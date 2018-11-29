@@ -72,6 +72,15 @@ def criaViewNumeroFilmes(conn):
     cur.close()
     # A VIEW criada começa com os números de [1...] e não em [0...]
 
+def retornaNomeFilme(number_filme,conn):
+	# Retorna nome do filme dado o número associado a ele na view.
+	cur = conn.cursor()
+	consulta = str("SELECT F.nome FROM Filmes F, Numero_filmes N WHERE F.id = N.id AND N.numero = number_filme;")
+	consulta = consulta.replace("number_filme",str(number_filme))
+	cur.execute(consulta)
+	nome_filme = cur.fetchall()
+	cur.close()
+	return str(nome_filme)
 
 def criaViewNumeroUsuario(conn):
     # Cria a VIER que associa um número único para cada usuário cadastrado.
@@ -81,6 +90,15 @@ def criaViewNumeroUsuario(conn):
     cur.execute(consulta)
     cur.close()
 
+def retornaNomeUsuario(number_usuario,conn):
+	# Retorna nome do filme dado o número associado a ele na view.
+	cur = conn.cursor()
+	consulta = str("SELECT P.nome_completo FROM Pessoa P, Numero_Usuario N WHERE P.login = N.login AND N.numero = oi;")
+	consulta = consulta.replace("oi",str(number_usuario))
+	cur.execute(consulta)
+	nome_usuario = cur.fetchall()
+	cur.close()
+	return str(nome_usuario)
 
 def obtemNomeUsuario(user, conn):
     # Obtem o nome do usuario a partir da view numero_usuario
@@ -100,6 +118,8 @@ def criaMatrizUsuarioFilme(conn):
     numero_filmes = obtemNumeroDeFilmes(conn)
     matriz_usuario_filme = np.zeros((numero_usuarios, numero_filmes))
     return matriz_usuario_filme
+
+"""def criaMatrizUsuarioFilme"""
 
 
 def criaMatrizUsuarioUsuario(conn):
@@ -169,13 +189,37 @@ def preencheMatrizUsuarioUsuario(matriz_usuario_usuario, matriz_usuarios_filmes,
     for i in range(0, numero_usuarios):
         for j in range(i + 1, numero_usuarios):
             # A similaridade entre o mesmo usuáro é 100%.
-            matriz_usuario_usuario[i][i] = 1
+            matriz_usuario_usuario[i][i] = 100
             similaridade = calculaSimilaridade(i, j, matriz_usuarios_filmes, numero_filmes, conn)
             # print(similaridade)
             matriz_usuario_usuario[i][j] = similaridade
             matriz_usuario_usuario[j][i] = similaridade
     return matriz_usuario_usuario
 
+def buscaMaiorSimilaridade(matriz_usuario_usuario,numero_usuarios,usuarioA):
+	# Busca o usuário que tem a maior similaridade com o usuárioA
+	maior_similaridade = 0
+	o_cara = 0
+	incomum = False
+	for usuarioB in range(0,numero_usuarios):
+		if matriz_usuario_usuario[usuarioA][usuarioB] > maior_similaridade and usuarioB != usuarioA:
+			maior_similaridade = matriz_usuario_usuario[usuarioA][usuarioB]
+			o_cara = usuarioB
+	if o_cara == 0:
+		incomum = True
+	return [o_cara,incomum];
+
+def recomendaFilmes(matriz_usuario_filme,numero_filme,usuarioA,usuarioB,conn):
+	# Retorna filmes para A assistir baseado no que ele não viu e B viu.
+	filmes_recomendados = []
+	i = 0
+	for filme in range(0,numero_filme):
+		if matriz_usuario_filme[usuarioB][filme]== 2 and matriz_usuario_filme[usuarioA][filme]== 0:
+		# Recomenda filmes apenas que B GOSTOU e A NÃO VIU.
+			nome_filme = retornaNomeFilme(int(filme),conn)
+			filmes_recomendados.insert(i,nome_filme)
+			i += 1
+	return filmes_recomendados
 # ------
 # Fim das definições das funções.
 
@@ -198,6 +242,7 @@ numero_filme = obtemNumeroDeFilmes(conn)
 
 matriz_usuario_filme = criaMatrizUsuarioFilme(conn)
 matriz_usuario_usuario = criaMatrizUsuarioUsuario(conn)
+
 # Seção 4 - Preenche as matrizes criadas.
 
 matriz_usuario_filme = preencheMatrizUsuarioFilme(matriz_usuario_filme, numero_usuario, conn)
@@ -210,7 +255,8 @@ matriz_usuario_usuario = preencheMatrizUsuarioUsuario(matriz_usuario_usuario, ma
     if(matriz_usuario_filme[29][filme] != 0):
         print(filme)"""
 
-menu = True
+# Menu para checar similaridade entre duas pessoas.
+menu = False
 while(menu):
     print("Bem vindo ao menu. \n1 - Pesquisar similaridade \n2 - Sair \nDigite a opção desejada:")
     option = input()
@@ -225,3 +271,48 @@ while(menu):
     elif(option == "2"):
         print("Saindo.")
         menu = False
+
+# Seção 6 - Recomendação de Filmes
+#Seção 6.1 =- Testes - Descobrir quem tem mais similaridade que você
+"""for i in range(0,numero_usuario):
+	nome_usuarioA = retornaNomeUsuario(8,conn)
+	nome_usuarioB = retornaNomeUsuario(i,conn)
+	if matriz_usuario_usuario[8][i]>0:
+		print(nome_usuarioA + "		" + nome_usuarioB + "		" + str(matriz_usuario_usuario[8][i]))
+cara = buscaMaiorSimilaridade(matriz_usuario_usuario,numero_usuario,8)
+nome_cara = retornaNomeUsuario(int(cara),conn)
+print(nome_cara)
+print(matriz_usuario_usuario[8,cara])
+#Seção 6.2 - Descobrir os filmes que ambos tem.
+for i in range(0,numero_filme):
+	nome_filme = retornaNomeFilme(i,conn)
+	if matriz_usuario_filme[cara][i]!=0:
+		nota_usuarioA = matriz_usuario_filme[8][i]
+		nota_usuarioB = matriz_usuario_filme[cara][i]
+		print(nome_filme + "		" + str(nota_usuarioA) + "			" + str(nota_usuarioB))"""
+
+menu = True
+while (menu):
+	print("Bem vindo ao menu. \nDigite seu número de usuário e lhe recomendaremos alguns filmes!")
+	user = input()
+	nome_usuario = retornaNomeUsuario(int(user),conn)
+	resultado = buscaMaiorSimilaridade(matriz_usuario_usuario,numero_usuario,int(user))
+	usuario_maior_similaridade = resultado[0]
+	if resultado[1]==True:
+		print("Me desculpe, " + nome_usuario + ", mas não há filmes para te recomendar no momento. Assista mais filmes!")
+		menu = False
+	else:
+		lista_filmes = recomendaFilmes(matriz_usuario_filme,numero_filme,int(user),usuario_maior_similaridade,conn)
+		print("Aqui está os filmes recomendados, " + nome_usuario + ":")
+		print(lista_filmes)
+		print("Obrigado por usar nosso programa! Até logo!")
+		menu = False
+"""
+for user in range(0,numero_usuario):
+	nome_usuario = retornaNomeUsuario(int(user),conn)
+	usuario_maior_similaridade = buscaMaiorSimilaridade(matriz_usuario_usuario,numero_usuario,int(user))
+	lista_filmes = recomendaFilmes(matriz_usuario_filme,numero_filme,int(user),usuario_maior_similaridade,conn)
+	print("Aqui está os filmes recomendados, " + nome_usuario + ":")
+	print(lista_filmes)"""
+
+#
