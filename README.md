@@ -1,2 +1,2 @@
 # database201802
-Database Discipline
+Introduction to Database - UTFPR
